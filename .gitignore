@@ -4,3 +4,8 @@
 .env
 *.map
 *.db
+tags
+.tox
+*.egg-info/
+dist/
+build/
