@@ -41,6 +41,13 @@ class SetUserManually(APIView):
         return Response({})
 
 
+class LoginView(APIView):
+    def get(self, request):
+        from django.contrib.auth import login
+        login(request, get_user_model().objects.get())
+        return Response({})
+
+
 class ProtectedView(View):
     authentication_classes = (SimpleAuth,)
     permission_classes = (IsAuthenticated,)
@@ -50,6 +57,7 @@ urlpatterns = [
     url(r'^/?$', View.as_view()),
     url(r'^user/?$', ProtectedView.as_view()),
     url(r'^set-user-manually/?$', SetUserManually.as_view()),
+    url(r'^login/?$', LoginView.as_view()),
 ]
 
 
@@ -186,15 +194,28 @@ class TestAuthenticationAndPermissions(RequestLogsTestMixin, APITestCase):
     ROOT_URLCONF=__name__,
     REQUESTLOGS={'STORAGE_CLASS': 'tests.test_views.UserStorage'},
 )
-@modify_settings(MIDDLEWARE={
-    'append': 'requestlogs.middleware.RequestLogsMiddleware',
-})
 class TestSetUser(APITestCase):
+    @modify_settings(MIDDLEWARE={
+        'append': 'requestlogs.middleware.RequestLogsMiddleware',
+    })
     def test_set_user_manually(self):
         with patch('tests.test_views.TestStorage.do_store') as mocked_store:
             user = get_user_model().objects.create_user('u1')
             response = self.client.get('/set-user-manually')
             assert response.status_code == 200
+
+        assert mocked_store.call_args[0][0] == {
+            'user': {'id': user.id, 'username': 'u1'}}
+
+    @override_settings(MIDDLEWARE=[
+        'django.contrib.sessions.middleware.SessionMiddleware',
+        'django.contrib.auth.middleware.AuthenticationMiddleware',
+        'requestlogs.middleware.RequestLogsMiddleware',
+    ])
+    def test_set_user_automatically_on_login(self):
+        with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+            user = get_user_model().objects.create_user('u1')
+            response = self.client.get('/login')
 
         assert mocked_store.call_args[0][0] == {
             'user': {'id': user.id, 'username': 'u1'}}
