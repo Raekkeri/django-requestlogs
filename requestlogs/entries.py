@@ -2,6 +2,7 @@ import datetime
 import time
 
 from django.utils import timezone
+from rest_framework.request import Request
 
 from .base import SETTINGS
 from .utils import remove_secrets, get_client_ip
@@ -62,6 +63,7 @@ class RequestLogEntry(object):
 
     # Private attributes to hold some context
     _user = None
+    _drf_request = None
 
     def __init__(self, request, view_class):
         self.django_request = request
@@ -71,7 +73,8 @@ class RequestLogEntry(object):
     def finalize(self, response):
         # Choose request handler
         try:
-            drf_request = getattr(response, 'renderer_context', {})['request']
+            drf_request = self.drf_request or getattr(
+                response, 'renderer_context', {})['request']
             self.request = self.drf_request_handler(drf_request)
         except KeyError:
             self.request = self.django_request_handler(self.django_request)
@@ -100,6 +103,15 @@ class RequestLogEntry(object):
     @user.setter
     def user(self, user):
         self._user = user
+
+    @property
+    def drf_request(self):
+        return self._drf_request
+
+    @drf_request.setter
+    def drf_request(self, drf_request):
+        assert isinstance(drf_request, Request)
+        self._drf_request = drf_request
 
     @property
     def ip_address(self):

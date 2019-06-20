@@ -23,11 +23,17 @@ class BaseEntrySerializer(serializers.Serializer):
         status_code = serializers.IntegerField(read_only=True)
         data = JsonDumpField(read_only=True)
 
+    class UserSerializer(serializers.Serializer):
+        id = serializers.IntegerField()
+        username = serializers.CharField()
+
+
     execution_time = serializers.DurationField(read_only=True)
     timestamp = serializers.DateTimeField(read_only=True)
     ip_address = serializers.CharField(read_only=True)
     request = RequestSerializer(read_only=True)
     response = ResponseSerializer(read_only=True)
+    user = UserSerializer()
 
 
 class LoggingStorage(object):

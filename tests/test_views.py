@@ -53,11 +53,21 @@ class ProtectedView(View):
     permission_classes = (IsAuthenticated,)
 
 
+class ServerErrorView(APIView):
+    authentication_classes = (SimpleAuth,)
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        # This will raise an error resulting a response with 500 status code
+        {'one': 1}['two']
+
+
 urlpatterns = [
     url(r'^/?$', View.as_view()),
     url(r'^user/?$', ProtectedView.as_view()),
     url(r'^set-user-manually/?$', SetUserManually.as_view()),
     url(r'^login/?$', LoginView.as_view()),
+    url(r'^error/?$', ServerErrorView.as_view()),
 ]
 
 
@@ -108,6 +118,7 @@ class Test(RequestLogsTestMixin, APITestCase):
                     'status_code': 200,
                     'data': '{}',
                 },
+                'user': {'id': None, 'username': None},
             })
 
     def test_post_bare_view(self):
@@ -124,6 +135,7 @@ class Test(RequestLogsTestMixin, APITestCase):
                     'status_code': 200,
                     'data': '{"status": "ok"}',
                 },
+                'user': {'id': None, 'username': None},
             })
 
 
@@ -219,3 +231,47 @@ class TestSetUser(APITestCase):
 
         assert mocked_store.call_args[0][0] == {
             'user': {'id': user.id, 'username': 'u1'}}
+
+
+@override_settings(
+    ROOT_URLCONF=__name__,
+    REQUESTLOGS={'STORAGE_CLASS': 'tests.test_views.TestStorage'},
+)
+@modify_settings(MIDDLEWARE={
+    'append': 'requestlogs.middleware.RequestLogsMiddleware',
+})
+class TestServerError(RequestLogsTestMixin, APITestCase):
+    def setUp(self):
+        super().setUp()
+        self.user = get_user_model().objects.create_user('u1')
+        self.client.credentials(HTTP_AUTHORIZATION='Password 123')
+        self.expected = {
+            'request': {
+                'method': 'POST',
+                'full_path': '/error',
+                'query_params': '{}',
+            },
+            'response': {
+                'status_code': 500,
+                'data': '{}',
+            },
+            'user': {'id': self.user.id, 'username': 'u1'},
+        }
+
+    @override_settings(
+        REST_FRAMEWORK={
+            'EXCEPTION_HANDLER': 'requestlogs.views.exception_handler',
+        })
+    def test_500_response(self):
+        with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+            self.assertRaises(
+                KeyError, self.client.post, '/error', {'pay': 'load'})
+            self.expected['request']['data'] = '{"pay": "load"}'
+            self.assert_stored(mocked_store, self.expected)
+
+    def test_500_response_without_custom_exception_handler(self):
+        with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+            self.assertRaises(
+                KeyError, self.client.post, '/error', {'pay': 'load'})
+            self.expected['request']['data'] = None
+            self.assert_stored(mocked_store, self.expected)
