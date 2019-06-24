@@ -27,7 +27,7 @@ class BaseEntrySerializer(serializers.Serializer):
         id = serializers.IntegerField()
         username = serializers.CharField()
 
-
+    action_name = serializers.CharField(read_only=True)
     execution_time = serializers.DurationField(read_only=True)
     timestamp = serializers.DateTimeField(read_only=True)
     ip_address = serializers.CharField(read_only=True)

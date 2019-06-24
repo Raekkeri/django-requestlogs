@@ -8,6 +8,7 @@ if django.VERSION[0] < 2:
 else:
     from django.urls import re_path as url
 from rest_framework import serializers
+from rest_framework import viewsets
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -19,6 +20,11 @@ from requestlogs.storages import BaseEntrySerializer
 
 
 class View(APIView):
+    requestlog_action_names = {
+        'get': 'get-some-resources',
+        'post': 'post-other-stuff',
+    }
+
     def get(self, request):
         return Response(self.get_response_data())
 
@@ -27,6 +33,23 @@ class View(APIView):
 
     def get_response_data(self):
         return {}
+
+
+class ViewSet(viewsets.ViewSet):
+    requestlog_action_names = {
+        'list': 'list-stuffs',
+        'retrieve': 'obj-detail',
+        'create': 'create-object',
+    }
+
+    def list(self, request):
+        return Response({})
+
+    def retrieve(self, request):
+        return Response({})
+
+    def create(self, request):
+        return Response({})
 
 
 class SimpleAuth(BaseAuthentication):
@@ -67,6 +90,8 @@ urlpatterns = [
     url(r'^user/?$', ProtectedView.as_view()),
     url(r'^set-user-manually/?$', SetUserManually.as_view()),
     url(r'^login/?$', LoginView.as_view()),
+    url(r'^viewset/?$', ViewSet.as_view({'get': 'list', 'post': 'create'})),
+    url(r'^viewset/1/?$', ViewSet.as_view({'get': 'retrieve'})),
     url(r'^error/?$', ServerErrorView.as_view()),
 ]
 
@@ -103,11 +128,12 @@ class RequestLogsTestMixin(object):
 @modify_settings(MIDDLEWARE={
     'append': 'requestlogs.middleware.RequestLogsMiddleware',
 })
-class Test(RequestLogsTestMixin, APITestCase):
+class TestStoredData(RequestLogsTestMixin, APITestCase):
     def test_get_bare_view(self):
         with patch('tests.test_views.TestStorage.do_store') as mocked_store:
             response = self.client.get('/?q=a')
             self.assert_stored(mocked_store, {
+                'action_name': 'get-some-resources',
                 'request': {
                     'method': 'GET',
                     'full_path': '/?q=a',
@@ -125,6 +151,7 @@ class Test(RequestLogsTestMixin, APITestCase):
         with patch('tests.test_views.TestStorage.do_store') as mocked_store:
             response = self.client.post('/', data={'test': 1})
             self.assert_stored(mocked_store, {
+                'action_name': 'post-other-stuff',
                 'request': {
                     'method': 'POST',
                     'full_path': '/',
@@ -139,6 +166,49 @@ class Test(RequestLogsTestMixin, APITestCase):
             })
 
 
+class ActionNameStorage(TestStorage):
+    class serializer_class(serializers.Serializer):
+        action_name = serializers.CharField()
+
+
+@override_settings(
+    ROOT_URLCONF=__name__,
+    REQUESTLOGS={'STORAGE_CLASS': 'tests.test_views.ActionNameStorage',
+                 'SECRETS': ['passwd']},
+)
+@modify_settings(MIDDLEWARE={
+    'append': 'requestlogs.middleware.RequestLogsMiddleware',
+})
+class TestActionNames(APITestCase):
+    def test_action_names_with_get_method(self):
+        with patch('tests.test_views.ActionNameStorage.do_store') as \
+                mocked_store:
+            response = self.client.get('/?q=a')
+            assert mocked_store.call_args[0][0] == {
+                'action_name': 'get-some-resources'}
+
+    def test_viewset_action_name_get_method(self):
+        with patch('tests.test_views.ActionNameStorage.do_store') as \
+                mocked_store:
+            response = self.client.get('/viewset')
+            assert mocked_store.call_args[0][0] == {
+                'action_name': 'list-stuffs'}
+
+    def test_viewset_action_name_get_method_other_action(self):
+        with patch('tests.test_views.ActionNameStorage.do_store') as \
+                mocked_store:
+            response = self.client.get('/viewset/1')
+            assert mocked_store.call_args[0][0] == {
+                'action_name': 'obj-detail'}
+
+    def test_viewset_action_name_post_method(self):
+        with patch('tests.test_views.ActionNameStorage.do_store') as \
+                mocked_store:
+            response = self.client.post('/viewset')
+            assert mocked_store.call_args[0][0] == {
+                'action_name': 'create-object'}
+
+
 @override_settings(
     ROOT_URLCONF=__name__,
     REQUESTLOGS={'STORAGE_CLASS': 'tests.test_views.TestStorage',
@@ -147,7 +217,7 @@ class Test(RequestLogsTestMixin, APITestCase):
 @modify_settings(MIDDLEWARE={
     'append': 'requestlogs.middleware.RequestLogsMiddleware',
 })
-class TestRemoveSecrets(RequestLogsTestMixin, APITestCase):
+class TestRemoveSecrets(APITestCase):
     def test_remove_password_from_request(self):
         with patch('tests.test_views.TestStorage.do_store') as mocked_store:
             response = self.client.post('/', data={'passwd': 1})
@@ -181,7 +251,7 @@ class UserStorage(TestStorage):
 @modify_settings(MIDDLEWARE={
     'append': 'requestlogs.middleware.RequestLogsMiddleware',
 })
-class TestAuthenticationAndPermissions(RequestLogsTestMixin, APITestCase):
+class TestAuthenticationAndPermissions(APITestCase):
     def test_authenticated_user(self):
         user = get_user_model().objects.create_user('u1')
         self.client.credentials(HTTP_AUTHORIZATION='Password 123')
@@ -246,6 +316,7 @@ class TestServerError(RequestLogsTestMixin, APITestCase):
         self.user = get_user_model().objects.create_user('u1')
         self.client.credentials(HTTP_AUTHORIZATION='Password 123')
         self.expected = {
+            'action_name': None,
             'request': {
                 'method': 'POST',
                 'full_path': '/error',

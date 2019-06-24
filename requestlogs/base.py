@@ -24,7 +24,7 @@ SETTINGS = {}
 populate_settings(SETTINGS)
 
 
-def get_requestlog_entry(request=None, view_class=None):
+def get_requestlog_entry(request=None, view_func=None):
     try:
         entry = getattr(request, SETTINGS['VARIABLE_NAME'])
         # `existing` should be something else than `None`
@@ -33,7 +33,7 @@ def get_requestlog_entry(request=None, view_class=None):
     except AttributeError:
         pass
 
-    entry = SETTINGS['ENTRY_CLASS'](request, view_class)
+    entry = SETTINGS['ENTRY_CLASS'](request, view_func)
     setattr(request, SETTINGS['VARIABLE_NAME'], entry)
     return entry
 

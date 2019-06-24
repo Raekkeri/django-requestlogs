@@ -8,7 +8,7 @@ class RequestLogsMiddleware(object):
     def process_view(self, request, view_func, view_args, view_kwargs):
         # DRF sets the `cls` attribute
         if getattr(view_func, 'cls', None):
-            get_requestlog_entry(request=request, view_class=view_func.cls)
+            get_requestlog_entry(request=request, view_func=view_func)
 
     def __call__(self, request):
         response = self.get_response(request)

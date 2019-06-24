@@ -65,18 +65,25 @@ class RequestLogEntry(object):
     _user = None
     _drf_request = None
 
-    def __init__(self, request, view_class):
+    def __init__(self, request, view_func):
         self.django_request = request
-        self.view_class = view_class
+        self.view_func = view_func
+        self.view_class = getattr(view_func, 'cls', None)
+        # TODO: How to get view_obj at this point?
+        self.view_obj = None
         self._initialized_at = time.time()
 
     def finalize(self, response):
-        # Choose request handler
-        try:
-            drf_request = self.drf_request or getattr(
-                response, 'renderer_context', {})['request']
-            self.request = self.drf_request_handler(drf_request)
-        except KeyError:
+        renderer_context = getattr(response, 'renderer_context', {})
+
+        self.view_obj = renderer_context.get('view')
+
+        if not self.drf_request:
+            self.drf_request = renderer_context.get('request')
+
+        if self.drf_request:
+            self.request = self.drf_request_handler(self.drf_request)
+        else:
             self.request = self.django_request_handler(self.django_request)
 
         self.response = self.response_handler(response)
@@ -110,8 +117,21 @@ class RequestLogEntry(object):
 
     @drf_request.setter
     def drf_request(self, drf_request):
-        assert isinstance(drf_request, Request)
+        assert isinstance(drf_request, (Request, type(None)))
         self._drf_request = drf_request
+
+    @property
+    def action_name(self):
+        if not self.view_class:
+            return None
+        action_names = getattr(self.view_class, 'requestlog_action_names', {})
+        try:
+            return action_names[self.view_obj.action]
+        except (KeyError, AttributeError):
+            try:
+                return action_names[self.django_request.method.lower()]
+            except KeyError:
+                pass
 
     @property
     def ip_address(self):
