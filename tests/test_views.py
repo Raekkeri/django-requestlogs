@@ -166,6 +166,24 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
             })
 
 
+@override_settings(
+    ROOT_URLCONF=__name__,
+    REQUESTLOGS={'STORAGE_CLASS': 'tests.test_views.TestStorage',
+                 'SECRETS': ['passwd']},
+)
+@modify_settings(MIDDLEWARE={
+    'append': 'requestlogs.middleware.RequestLogsMiddleware',
+})
+class TestResponseDataTypes(APITestCase):
+    def test_remove_password_from_request(self):
+        with patch('tests.test_views.TestStorage.do_store') as mocked_store, \
+                patch('tests.test_views.View.get_response_data') as \
+                mocked_get_data:
+            mocked_get_data.return_value = 'ok'
+            response = self.client.get('/')
+            assert mocked_store.call_args[0][0]['response']['data'] == '"ok"'
+
+
 class ActionNameStorage(TestStorage):
     class serializer_class(serializers.Serializer):
         action_name = serializers.CharField()
@@ -324,7 +342,7 @@ class TestServerError(RequestLogsTestMixin, APITestCase):
             },
             'response': {
                 'status_code': 500,
-                'data': '{}',
+                'data': None,
             },
             'user': {'id': self.user.id, 'username': 'u1'},
         }

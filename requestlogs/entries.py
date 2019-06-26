@@ -49,9 +49,10 @@ class ResponseHandler(object):
 
     @property
     def data(self):
-        if hasattr(self.response, 'data'):
-            return remove_secrets(self.response.data)
-        return {}
+        data = getattr(self.response, 'data', None)
+        if isinstance(data, dict):
+            return remove_secrets(data)
+        return data
 
 
 class RequestLogEntry(object):
