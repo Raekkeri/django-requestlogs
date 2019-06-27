@@ -125,7 +125,7 @@ class RequestLogEntry(object):
     def action_name(self):
         if not self.view_class:
             return None
-        action_names = getattr(self.view_class, 'requestlog_action_names', {})
+        action_names = getattr(self.view_class, 'requestlogs_action_names', {})
         try:
             return action_names[self.view_obj.action]
         except (KeyError, AttributeError):

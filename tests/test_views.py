@@ -21,7 +21,7 @@ from requestlogs.storages import BaseEntrySerializer
 
 
 class View(APIView):
-    requestlog_action_names = {
+    requestlogs_action_names = {
         'get': 'get-some-resources',
         'post': 'post-other-stuff',
     }
@@ -37,7 +37,7 @@ class View(APIView):
 
 
 class ViewSet(viewsets.ViewSet):
-    requestlog_action_names = {
+    requestlogs_action_names = {
         'list': 'list-stuffs',
         'retrieve': 'obj-detail',
         'create': 'create-object',
