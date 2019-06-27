@@ -10,6 +10,7 @@ else:
 from rest_framework import serializers
 from rest_framework import viewsets
 from rest_framework.authentication import BaseAuthentication
+from rest_framework.decorators import api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.test import APITestCase
@@ -85,6 +86,11 @@ class ServerErrorView(APIView):
         {'one': 1}['two']
 
 
+@api_view(['GET'])
+def api_view_function(request):
+    return Response({'status': 'ok'})
+
+
 urlpatterns = [
     url(r'^/?$', View.as_view()),
     url(r'^user/?$', ProtectedView.as_view()),
@@ -92,6 +98,7 @@ urlpatterns = [
     url(r'^login/?$', LoginView.as_view()),
     url(r'^viewset/?$', ViewSet.as_view({'get': 'list', 'post': 'create'})),
     url(r'^viewset/1/?$', ViewSet.as_view({'get': 'retrieve'})),
+    url(r'^func/?$', api_view_function),
     url(r'^error/?$', ServerErrorView.as_view()),
 ]
 
@@ -157,6 +164,24 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
                     'full_path': '/',
                     'data': '{"test": "1"}',
                     'query_params': "{}",
+                },
+                'response': {
+                    'status_code': 200,
+                    'data': '{"status": "ok"}',
+                },
+                'user': {'id': None, 'username': None},
+            })
+
+    def test_api_view(self):
+        with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+            response = self.client.get('/func?test=1')
+            self.assert_stored(mocked_store, {
+                'action_name': None,
+                'request': {
+                    'method': 'GET',
+                    'full_path': '/func?test=1',
+                    'data': "{}",
+                    'query_params': '{"test": "1"}',
                 },
                 'response': {
                     'status_code': 200,
