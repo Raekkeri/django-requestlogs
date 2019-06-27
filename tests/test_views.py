@@ -174,8 +174,8 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
 @modify_settings(MIDDLEWARE={
     'append': 'requestlogs.middleware.RequestLogsMiddleware',
 })
-class TestResponseDataTypes(APITestCase):
-    def test_remove_password_from_request(self):
+class TestDataTypes(APITestCase):
+    def test_simple_str_response(self):
         with patch('tests.test_views.TestStorage.do_store') as mocked_store, \
                 patch('tests.test_views.View.get_response_data') as \
                 mocked_get_data:
