@@ -4,7 +4,7 @@ from django.test.signals import setting_changed
 
 
 DEFAULT_SETTINGS = {
-    'VARIABLE_NAME': '_requestlog',
+    'ATTRIBUTE_NAME': '_requestlog',
     'ENTRY_CLASS': 'requestlogs.entries.RequestLogEntry',
     'STORAGE_CLASS': 'requestlogs.storages.LoggingStorage',
     'SECRETS': ['password', 'token'],
@@ -26,7 +26,7 @@ populate_settings(SETTINGS)
 
 def get_requestlog_entry(request=None, view_func=None):
     try:
-        entry = getattr(request, SETTINGS['VARIABLE_NAME'])
+        entry = getattr(request, SETTINGS['ATTRIBUTE_NAME'])
         # `existing` should be something else than `None`
         assert entry
         return entry
@@ -34,7 +34,7 @@ def get_requestlog_entry(request=None, view_func=None):
         pass
 
     entry = SETTINGS['ENTRY_CLASS'](request, view_func)
-    setattr(request, SETTINGS['VARIABLE_NAME'], entry)
+    setattr(request, SETTINGS['ATTRIBUTE_NAME'], entry)
     return entry
 
 
