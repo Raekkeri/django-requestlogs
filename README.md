@@ -1,6 +1,46 @@
 # django-requestlogs
 
 django-requestlogs is a package providing middleware and other helpers for audit logging.
+The middleware collects information about request-response cycle into log entries. The
+collected information can be fully customized, but the out-of-the-box implementation
+includes
+
+- user ID and username
+- request (path, method, payload..)
+- response (status code, payload..)
+- general information, such as timestamp, execution time
+
+Finally the log entry is stored in predefined storage, which by default is configurable
+using Django's logging system.
+
+Once installed, log storage should start showing entries such as the following:
+
+```
+{'action_name': None, 'execution_time': '00:00:00.024900', 'timestamp': '2019-07-01T07:05:34.217703Z', 'ip_address': None, 'request': OrderedDict([('method', 'GET'), ('full_path', '/'), ('data', '{}'), ('query_params', '{}')]), 'response': OrderedDict([('status_code', 200), ('data', '{"ok": true}')]), 'user': OrderedDict([('id', 1), ('username', 'admin')])}
+```
+
+## Motivation
+
+django-requestlogs attempts to provide tools for implementing audit logging (audit trail)
+to systems that require such feature. These systems typically must have the ability to
+tell "what information the end-user has accessed (and what information was sent to the
+system)?". django-requestlogs hooks into the Django REST framework in the simplest
+way possible while logging every request without the need of remembering to enable it
+for each view separately.
+
+Currently django-requestlogs package is primarily focusing on working seamlessly with
+Django REST framework. While plain Django requests are also collected, their request and
+response payload, for example, is not stored.
+
+# Requirements
+
+- Django (1.11, 2.0, 2.1, 2.2)
+- Django REST framework
+
+Optional dependencies:
+
+- django-ipware
+  - if installed, this is used for storing end-user's IP address
 
 # Installation
 
@@ -59,4 +99,4 @@ REQUESTLOGS = {
 - **SECRETS**
   - List of keys in request/response data which will be replaced with `'***'` in the stored entry.
 - **ATTRIBUTE_NAME**
-  - django-requestlogs internally attaches the entry object to the Django request object, and uses this attribute name. Override if it causes collusions.
+  - django-requestlogs internally attaches the entry object to the Django request object, and uses this attribute name. Override if it causes collisions.
