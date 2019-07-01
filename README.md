@@ -1,5 +1,8 @@
 # django-requestlogs
 
+[![Build Status](https://travis-ci.org/Raekkeri/django-requestlogs.svg?branch=master)](https://travis-ci.org/Raekkeri/django-requestlogs)
+![PyPI](https://img.shields.io/pypi/v/django-requestlogs.svg)
+
 django-requestlogs is a package providing middleware and other helpers for audit logging.
 The middleware collects information about request-response cycle into log entries. The
 collected information can be fully customized, but the out-of-the-box implementation
