@@ -6,7 +6,7 @@ with open('README.md', 'r') as fh:
 setup(
     name='django-requestlogs',
     zip_safe=False,
-    version='0.1.4',
+    version='0.1.5',
     description='Audit logging for Django and Django Rest Framework',
     long_description=long_description,
     long_description_content_type='text/markdown',
