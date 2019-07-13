@@ -8,6 +8,8 @@ DEFAULT_SETTINGS = {
     'ENTRY_CLASS': 'requestlogs.entries.RequestLogEntry',
     'STORAGE_CLASS': 'requestlogs.storages.LoggingStorage',
     'SECRETS': ['password', 'token'],
+    'REQUEST_ID_ATTRIBUTE_NAME': 'request_id',
+    'REQUEST_ID_HTTP_HEADER': None,
 }
 
 

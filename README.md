@@ -60,7 +60,20 @@ MIDDLEWARE = [
 ]
 ```
 
-This will start storing the request logs using the default `STORAGE_CLASS`, which in fact just uses Python logger named `requestlogs`. Now you can, for example, redirect these logs to a file with the following `LOGGING` configuration:
+Set `'requestlogs.views.exception_handler'` as rest_framework's exception handler
+(this will make sure requestlog entry has all possible data available about the
+request in case of a 500 error):
+
+```python
+REST_FRAMEWORK={
+    ...
+    'EXCEPTION_HANDLER': 'requestlogs.views.exception_handler',
+}
+```
+
+The middleware is now ready to start storing requestlog entries using the default
+`STORAGE_CLASS`, which in fact just uses Python logger named `requestlogs`. Now you can,
+for example, redirect these logs to a file with the following `LOGGING` configuration:
 
 ```python
 LOGGING = {
@@ -77,6 +90,7 @@ LOGGING = {
         'requestlogs': {
             'handlers': ['requestlogs_to_file'],
             'level': 'INFO',
+            'propagate': False,
         },
     },
 }
@@ -103,3 +117,95 @@ REQUESTLOGS = {
   - List of keys in request/response data which will be replaced with `'***'` in the stored entry.
 - **ATTRIBUTE_NAME**
   - django-requestlogs internally attaches the entry object to the Django request object, and uses this attribute name. Override if it causes collisions.
+
+
+# Logging with Request ID
+
+django-requestlogs also contains a middleware and logging helpers to associate a unique
+identifier (uuid) for each request (implemented using `threading.local()`).
+The request id can be added to the standard logging messages (Django application logs)
+by specifying a custom formatter and using the provided logging filter.
+The request id can be stored to requestlog entries as well.
+The middleware to enable the request id logging can be used separately from the
+core requestlogs middleware.
+
+The feature is enabled by adding `requestlogs.middleware.RequestLogsMiddleware`
+to the `MIDDLEWARE` setting:
+
+```python
+MIDDLEWARE = [
+    ...
+    'requestlogs.middleware.RequestLogsMiddleware',
+    'requestlogs.middleware.RequestIdMiddleware',
+]
+```
+
+Once installed, the application logs should start showing messages with a format such as
+the following:
+
+```
+2019-07-18 11:56:07,261 INFO 954fb004fb404751a2fa33326101442c urls:31 Handling GET request
+2019-07-18 11:56:07,262 DEBUG 954fb004fb404751a2fa33326101442c urls:32 No parameters given
+2019-07-18 11:56:07,262 INFO 954fb004fb404751a2fa33326101442c urls:33 All good
+```
+
+The middleware has some configuration possiblities:
+
+
+```python
+REQUESTLOGS = {
+    ...
+    'REQUEST_ID_HTTP_HEADER': 'X_DJANGO_REQUEST_ID',
+    'REQUEST_ID_ATTRIBUTE_NAME': 'request_id',
+}
+```
+- **REQUEST_ID_HTTP_HEADER**
+  - If set, the value of this request header is used as request id (instead of it being
+    randomly generated). Must be a valid uuid.
+- **REQUEST_ID_ATTRIBUTE_NAME**
+  - The attribute name which is used internally to attach request id to
+    `threading.locals()`. Override if it causes collisions.
+
+To add the request id to logging messages of your Django application, use the provided
+logging filter and include `request_id` to the log formatter.
+Here is the complete logging configuration:
+
+```python
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'requestlogs_to_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': '/tmp/requestlogs.log',
+        },
+        'root': {
+            'class': 'logging.StreamHandler',
+            'filters': ['request_id_context'],
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['root'],
+            'level': 'DEBUG',
+        },
+        'requestlogs': {
+            'handlers': ['requestlogs_to_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+    'filters': {
+        'request_id_context': {
+            '()': 'requestlogs.logging.RequestIdContext',
+        },
+    },
+    'formatters': {
+        'verbose': {
+            'format': '%(asctime)s %(levelname)s %(request_id)s %(module)s:%(lineno)s %(message)s'
+        },
+    },
+}
+```

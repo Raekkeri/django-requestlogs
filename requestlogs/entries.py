@@ -5,6 +5,7 @@ from django.utils import timezone
 from rest_framework.request import Request
 
 from .base import SETTINGS
+from .logging import get_request_id
 from .utils import remove_secrets, get_client_ip
 
 
@@ -27,6 +28,10 @@ class RequestHandler(object):
     @property
     def full_path(self):
         return self.request.get_full_path()
+
+    @property
+    def request_id(self):
+        return get_request_id()
 
 
 class DRFRequestHandler(RequestHandler):
