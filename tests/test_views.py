@@ -20,7 +20,7 @@ from rest_framework.views import APIView
 
 from requestlogs import get_requestlog_entry
 from requestlogs.logging import RequestIdContext
-from requestlogs.storages import BaseEntrySerializer
+from requestlogs.storages import BaseEntrySerializer, BaseStorage
 
 
 class View(APIView):
@@ -112,11 +112,9 @@ urlpatterns = [
 ]
 
 
-class TestStorage(object):
-    serializer_class = BaseEntrySerializer
-
+class TestStorage(BaseStorage):
     def store(self, entry):
-        self.do_store(self.serializer_class(entry).data)
+        self.do_store(self.prepare(entry))
 
     def do_store(self, data):
         # This is to be mocked by tests
@@ -400,9 +398,8 @@ class TestServerError(RequestLogsTestMixin, APITestCase):
             self.assert_stored(mocked_store, self.expected)
 
 
-class RequestIdStorage(TestStorage):
-    class serializer_class(serializers.Serializer):
-        request_id = serializers.CharField(source='request.request_id')
+class RequestIdSerializer(serializers.Serializer):
+    request_id = serializers.CharField(source='request.request_id')
 
 
 class LoggingMixin(object):
@@ -427,7 +424,10 @@ class LoggingMixin(object):
 
 @override_settings(
     ROOT_URLCONF=__name__,
-    REQUESTLOGS={'STORAGE_CLASS': 'tests.test_views.RequestIdStorage'},
+    REQUESTLOGS={
+        'STORAGE_CLASS': 'tests.test_views.TestStorage',
+        'SERIALIZER_CLASS': 'tests.test_views.RequestIdSerializer',
+    },
 )
 @modify_settings(MIDDLEWARE={
     'append': [
@@ -435,9 +435,9 @@ class LoggingMixin(object):
         'requestlogs.middleware.RequestIdMiddleware',
     ],
 })
-class TestRequestIdMiddleware(LoggingMixin, APITestCase):
+class TestRequestIdMiddleware(LoggingMixin, RequestLogsTestMixin, APITestCase):
     def test_request_id_generated(self):
-        with patch('tests.test_views.RequestIdStorage.do_store') \
+        with patch('tests.test_views.TestStorage.do_store') \
                 as mocked_store, patch('uuid.uuid4') as mocked_uuid:
             mocked_uuid.side_effect = [Mock(hex='12345dcba')]
             response = self.client.get('/')
@@ -460,7 +460,7 @@ class TestRequestIdMiddleware(LoggingMixin, APITestCase):
     def test_python_logging_and_requestlogs_entry(self):
         self._setup_logging()
 
-        with patch('tests.test_views.RequestIdStorage.do_store') \
+        with patch('tests.test_views.TestStorage.do_store') \
                 as mocked_store, patch('uuid.uuid4') as mocked_uuid, \
                 patch('uuid.uuid4') as mocked_uuid:
             mocked_uuid.side_effect = [
@@ -477,11 +477,44 @@ class TestRequestIdMiddleware(LoggingMixin, APITestCase):
             'INFO ffc999123 GET with logging (2)',
         ])
 
+    @override_settings(
+        REQUESTLOGS={
+            'STORAGE_CLASS': 'tests.test_views.TestStorage',
+            'SERIALIZER_CLASS': 'requestlogs.storages.RequestIdEntrySerializer',
+        },
+    )
+    def test_default_request_id_serializer(self):
+        self._setup_logging()
+
+        with patch('tests.test_views.TestStorage.do_store') \
+                as mocked_store, patch('uuid.uuid4') as mocked_uuid, \
+                patch('uuid.uuid4') as mocked_uuid:
+            mocked_uuid.side_effect = [Mock(hex='12345dcba')]
+            self.client.get('/logging?q=1')
+            self.assert_stored(mocked_store, {
+                'action_name': None,
+                'request': {
+                    'method': 'GET',
+                    'full_path': '/logging?q=1',
+                    'data': '{}',
+                    'query_params': '{"q": "1"}',
+                    'request_id': '12345dcba',
+                },
+                'response': {
+                    'status_code': 200,
+                    'data': '{}',
+                },
+                'user': {'id': None, 'username': None},
+            })
+
+        self._assert_logged_lines(['INFO 12345dcba GET with logging (1)'])
+
 
 @override_settings(
     ROOT_URLCONF=__name__,
     REQUESTLOGS={
-        'STORAGE_CLASS': 'tests.test_views.RequestIdStorage',
+        'STORAGE_CLASS': 'tests.test_views.TestStorage',
+        'SERIALIZER_CLASS': 'tests.test_views.RequestIdSerializer',
         'REQUEST_ID_HTTP_HEADER': 'X_DJANGO_REQUEST_ID',
     },
 )
@@ -498,7 +531,7 @@ class TestReuseRequestId(LoggingMixin, APITestCase):
         uuid = '6359abe9f7d849e09a324791c6a6c976'
         self.client.credentials(X_DJANGO_REQUEST_ID=uuid)
 
-        with patch('tests.test_views.RequestIdStorage.do_store') \
+        with patch('tests.test_views.TestStorage.do_store') \
                 as mocked_store, patch('uuid.uuid4') as mocked_uuid, \
                 patch('uuid.uuid4') as mocked_uuid:
             mocked_uuid.side_effect = []
@@ -516,7 +549,7 @@ class TestReuseRequestId(LoggingMixin, APITestCase):
         self._test_request_id_generated()
 
     def _test_request_id_generated(self):
-        with patch('tests.test_views.RequestIdStorage.do_store') \
+        with patch('tests.test_views.TestStorage.do_store') \
                 as mocked_store, patch('uuid.uuid4') as mocked_uuid, \
                 patch('uuid.uuid4') as mocked_uuid:
             mocked_uuid.side_effect = [Mock(hex='12345dcba')]

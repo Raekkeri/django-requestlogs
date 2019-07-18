@@ -104,6 +104,7 @@ Requestlogs can be customized using Django settings. The following shows the def
 REQUESTLOGS = {
     'STORAGE_CLASS': 'requestlogs.storages.LoggingStorage',
     'ENTRY_CLASS': 'requestlogs.entries.RequestLogEntry',
+    'SERIALIZER_CLASS': 'requestlogs.storages.BaseEntrySerializer',
     'SECRETS': ['password', 'token'],
     'ATTRIBUTE_NAME': '_requestlog',
 }
@@ -113,6 +114,8 @@ REQUESTLOGS = {
   - Path to the Python class which will handle storing the log entries. Override this if you only need to reimplement the storage mechanism. This may be the case e.g. when choosing what data to store.
 - **ENTRY_CLASS**
   - Path to the Python class which handles the construction of the complete requestlogs entry. Override this for full customization of the requestlog entry behaviour.
+- **SERIALIZER_CLASS**
+  - Path to the serializer class which is used to serialize the requestlog entry before storage. By default this is a subclass of `rest_framework.serializers.Serializer`.
 - **SECRETS**
   - List of keys in request/response data which will be replaced with `'***'` in the stored entry.
 - **ATTRIBUTE_NAME**
@@ -121,13 +124,20 @@ REQUESTLOGS = {
 
 # Logging with Request ID
 
-django-requestlogs also contains a middleware and logging helpers to associate a unique
-identifier (uuid) for each request (implemented using `threading.local()`).
-The request id can be added to the standard logging messages (Django application logs)
+django-requestlogs also contains a middleware and logging helpers to associate a
+request-specific identifier (uuid) to logging messages. This aims to help
+distinguishing messages to certain request-response cycle, which can be useful
+in an application that receives a high number of requests.
+
+The request id is added to the standard logging messages (Django application logs)
 by specifying a custom formatter and using the provided logging filter.
 The request id can be stored to requestlog entries as well.
-The middleware to enable the request id logging can be used separately from the
-core requestlogs middleware.
+The middleware to enable the request id logging does not require the core requestlogs
+middleware to be installed.
+
+Under the hood the request id is implemented with help of `threading.local()`.
+
+## Installation
 
 The feature is enabled by adding `requestlogs.middleware.RequestLogsMiddleware`
 to the `MIDDLEWARE` setting:
@@ -149,7 +159,19 @@ the following:
 2019-07-18 11:56:07,262 INFO 954fb004fb404751a2fa33326101442c urls:33 All good
 ```
 
-The middleware has some configuration possiblities:
+To add the request id to requestlog entries as well, you can use the provided serializer
+class as a starting point:
+
+```python
+REQUESTLOGS = {
+    ...
+    'SERIALIZER_CLASS': 'requestlogs.storages.RequestIdEntrySerializer',
+}
+```
+
+## Configuration
+
+The middleware has some additional configuration possiblities:
 
 
 ```python
@@ -161,7 +183,10 @@ REQUESTLOGS = {
 ```
 - **REQUEST_ID_HTTP_HEADER**
   - If set, the value of this request header is used as request id (instead of it being
-    randomly generated). Must be a valid uuid.
+    randomly generated). This must be a valid uuid. One use case for this feature is in
+    microservice architecture, where a micreservice calls another, internal microservice.
+    Having the log messages of both applications to be formatted with same request id
+    might be the preferred outcome.
 - **REQUEST_ID_ATTRIBUTE_NAME**
   - The attribute name which is used internally to attach request id to
     `threading.locals()`. Override if it causes collisions.

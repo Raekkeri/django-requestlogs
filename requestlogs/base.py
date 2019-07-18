@@ -7,6 +7,7 @@ DEFAULT_SETTINGS = {
     'ATTRIBUTE_NAME': '_requestlog',
     'ENTRY_CLASS': 'requestlogs.entries.RequestLogEntry',
     'STORAGE_CLASS': 'requestlogs.storages.LoggingStorage',
+    'SERIALIZER_CLASS': 'requestlogs.storages.BaseEntrySerializer',
     'SECRETS': ['password', 'token'],
     'REQUEST_ID_ATTRIBUTE_NAME': 'request_id',
     'REQUEST_ID_HTTP_HEADER': None,
@@ -20,6 +21,8 @@ def populate_settings(_settings):
         _settings[k] = v
     _settings['ENTRY_CLASS'] = import_string(_settings['ENTRY_CLASS'])
     _settings['STORAGE_CLASS'] = import_string(_settings['STORAGE_CLASS'])
+    _settings['SERIALIZER_CLASS'] = import_string(
+        _settings['SERIALIZER_CLASS'])
 
 
 SETTINGS = {}
