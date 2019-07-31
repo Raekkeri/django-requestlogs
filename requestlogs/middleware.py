@@ -1,3 +1,5 @@
+from .base import SETTINGS
+from .logging import set_request_id, validate_uuid
 from . import get_requestlog_entry
 
 
@@ -14,3 +16,13 @@ class RequestLogsMiddleware(object):
         response = self.get_response(request)
         get_requestlog_entry(request).finalize(response)
         return response
+
+
+class RequestIdMiddleware(object):
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        reuse_request_id = request.META.get(SETTINGS['REQUEST_ID_HTTP_HEADER'])
+        set_request_id(validate_uuid(reuse_request_id))
+        return self.get_response(request)

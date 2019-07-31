@@ -1,4 +1,6 @@
-from unittest.mock import patch
+import io
+import logging
+from unittest.mock import patch, Mock
 
 import django
 from django.contrib.auth import get_user_model
@@ -17,7 +19,8 @@ from rest_framework.test import APITestCase
 from rest_framework.views import APIView
 
 from requestlogs import get_requestlog_entry
-from requestlogs.storages import BaseEntrySerializer
+from requestlogs.logging import RequestIdContext
+from requestlogs.storages import BaseEntrySerializer, BaseStorage
 
 
 class View(APIView):
@@ -50,6 +53,11 @@ class ViewSet(viewsets.ViewSet):
         return Response({})
 
     def create(self, request):
+        return Response({})
+
+    def w_logging(self, request):
+        logger = logging.getLogger('request_id_test')
+        logger.info('GET with logging ({})'.format(request.GET.get('q')))
         return Response({})
 
 
@@ -100,14 +108,13 @@ urlpatterns = [
     url(r'^viewset/1/?$', ViewSet.as_view({'get': 'retrieve'})),
     url(r'^func/?$', api_view_function),
     url(r'^error/?$', ServerErrorView.as_view()),
+    url(r'^logging/?$', ViewSet.as_view({'get': 'w_logging'})),
 ]
 
 
-class TestStorage(object):
-    serializer_class = BaseEntrySerializer
-
+class TestStorage(BaseStorage):
     def store(self, entry):
-        self.do_store(self.serializer_class(entry).data)
+        self.do_store(self.prepare(entry))
 
     def do_store(self, data):
         # This is to be mocked by tests
@@ -389,3 +396,162 @@ class TestServerError(RequestLogsTestMixin, APITestCase):
                 KeyError, self.client.post, '/error', {'pay': 'load'})
             self.expected['request']['data'] = None
             self.assert_stored(mocked_store, self.expected)
+
+
+class RequestIdSerializer(serializers.Serializer):
+    request_id = serializers.CharField(source='request.request_id')
+
+
+class LoggingMixin(object):
+    def _setup_logging(self):
+        log_format = '{levelname} {request_id} {message}'
+        stream = io.StringIO('')
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(logging.Formatter(log_format, style='{'))
+        logger = logging.getLogger('request_id_test')
+        logger.setLevel(logging.INFO)
+        logger.addHandler(handler)
+        logger.addFilter(RequestIdContext())
+        self._log_stream = stream
+
+    def _assert_logged_lines(self, lines):
+        self._log_stream.seek(0)
+        raw = self._log_stream.read()
+        assert raw.endswith('\n')
+        logged_lines = [i for i in raw.split('\n')][:-1]
+        assert logged_lines == lines
+
+
+@override_settings(
+    ROOT_URLCONF=__name__,
+    REQUESTLOGS={
+        'STORAGE_CLASS': 'tests.test_views.TestStorage',
+        'SERIALIZER_CLASS': 'tests.test_views.RequestIdSerializer',
+    },
+)
+@modify_settings(MIDDLEWARE={
+    'append': [
+        'requestlogs.middleware.RequestLogsMiddleware',
+        'requestlogs.middleware.RequestIdMiddleware',
+    ],
+})
+class TestRequestIdMiddleware(LoggingMixin, RequestLogsTestMixin, APITestCase):
+    def test_request_id_generated(self):
+        with patch('tests.test_views.TestStorage.do_store') \
+                as mocked_store, patch('uuid.uuid4') as mocked_uuid:
+            mocked_uuid.side_effect = [Mock(hex='12345dcba')]
+            response = self.client.get('/')
+            assert mocked_store.call_args[0][0] == {'request_id': '12345dcba'}
+
+    def test_python_logging_with_request_id(self):
+        # First build logging setup which outputs entries with request_id.
+        # We cannot use `self.assertLogs`, because it uses the default
+        # formatter, and so request_id wouldn't be seen in log output.
+        self._setup_logging()
+
+        # Now that logging is set up to capture formatted log entries into the
+        # `stream`, we can do the request and finally check the logged result.
+        with patch('uuid.uuid4') as mocked_uuid:
+            mocked_uuid.side_effect = [Mock(hex='12345dcba')]
+            self.client.get('/logging?q=yes')
+
+        self._assert_logged_lines(['INFO 12345dcba GET with logging (yes)'])
+
+    def test_python_logging_and_requestlogs_entry(self):
+        self._setup_logging()
+
+        with patch('tests.test_views.TestStorage.do_store') \
+                as mocked_store, patch('uuid.uuid4') as mocked_uuid, \
+                patch('uuid.uuid4') as mocked_uuid:
+            mocked_uuid.side_effect = [
+                Mock(hex='12345dcba'), Mock(hex='ffc999123')]
+            self.client.get('/logging?q=1')
+            self.client.get('/logging?q=2')
+
+            call_args1, call_args2 = mocked_store.call_args_list
+            assert call_args1[0][0] == {'request_id': '12345dcba'}
+            assert call_args2[0][0] == {'request_id': 'ffc999123'}
+
+        self._assert_logged_lines([
+            'INFO 12345dcba GET with logging (1)',
+            'INFO ffc999123 GET with logging (2)',
+        ])
+
+    @override_settings(
+        REQUESTLOGS={
+            'STORAGE_CLASS': 'tests.test_views.TestStorage',
+            'SERIALIZER_CLASS': 'requestlogs.storages.RequestIdEntrySerializer',
+        },
+    )
+    def test_default_request_id_serializer(self):
+        self._setup_logging()
+
+        with patch('tests.test_views.TestStorage.do_store') \
+                as mocked_store, patch('uuid.uuid4') as mocked_uuid, \
+                patch('uuid.uuid4') as mocked_uuid:
+            mocked_uuid.side_effect = [Mock(hex='12345dcba')]
+            self.client.get('/logging?q=1')
+            self.assert_stored(mocked_store, {
+                'action_name': None,
+                'request': {
+                    'method': 'GET',
+                    'full_path': '/logging?q=1',
+                    'data': '{}',
+                    'query_params': '{"q": "1"}',
+                    'request_id': '12345dcba',
+                },
+                'response': {
+                    'status_code': 200,
+                    'data': '{}',
+                },
+                'user': {'id': None, 'username': None},
+            })
+
+        self._assert_logged_lines(['INFO 12345dcba GET with logging (1)'])
+
+
+@override_settings(
+    ROOT_URLCONF=__name__,
+    REQUESTLOGS={
+        'STORAGE_CLASS': 'tests.test_views.TestStorage',
+        'SERIALIZER_CLASS': 'tests.test_views.RequestIdSerializer',
+        'REQUEST_ID_HTTP_HEADER': 'X_DJANGO_REQUEST_ID',
+    },
+)
+@modify_settings(MIDDLEWARE={
+    'append': [
+        'requestlogs.middleware.RequestLogsMiddleware',
+        'requestlogs.middleware.RequestIdMiddleware',
+    ],
+})
+class TestReuseRequestId(LoggingMixin, APITestCase):
+    def test_reuse_request_id(self):
+        self._setup_logging()
+
+        uuid = '6359abe9f7d849e09a324791c6a6c976'
+        self.client.credentials(X_DJANGO_REQUEST_ID=uuid)
+
+        with patch('tests.test_views.TestStorage.do_store') \
+                as mocked_store, patch('uuid.uuid4') as mocked_uuid, \
+                patch('uuid.uuid4') as mocked_uuid:
+            mocked_uuid.side_effect = []
+            response = self.client.get('/logging?q=p')
+            assert mocked_store.call_args[0][0] == {'request_id': uuid}
+
+        self._assert_logged_lines([
+            'INFO 6359abe9f7d849e09a324791c6a6c976 GET with logging (p)'])
+
+    def test_bad_request_id(self):
+        self.client.credentials(X_DJANGO_REQUEST_ID='BAD')
+        self._test_request_id_generated()
+
+    def test_no_request_id_present(self):
+        self._test_request_id_generated()
+
+    def _test_request_id_generated(self):
+        with patch('tests.test_views.TestStorage.do_store') \
+                as mocked_store, patch('uuid.uuid4') as mocked_uuid, \
+                patch('uuid.uuid4') as mocked_uuid:
+            mocked_uuid.side_effect = [Mock(hex='12345dcba')]
+            response = self.client.get('/')
+            assert mocked_store.call_args[0][0] == {'request_id': '12345dcba'}

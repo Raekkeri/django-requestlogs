@@ -3,6 +3,8 @@ import logging
 
 from rest_framework import serializers
 
+from .base import SETTINGS
+
 
 logger = logging.getLogger('requestlogs')
 
@@ -12,13 +14,14 @@ class JsonDumpField(serializers.Field):
         return json.dumps(value)
 
 
-class BaseEntrySerializer(serializers.Serializer):
-    class RequestSerializer(serializers.Serializer):
-        method = serializers.CharField(read_only=True)
-        full_path = serializers.CharField(read_only=True)
-        data = JsonDumpField(read_only=True)
-        query_params = JsonDumpField(read_only=True)
+class BaseRequestSerializer(serializers.Serializer):
+    method = serializers.CharField(read_only=True)
+    full_path = serializers.CharField(read_only=True)
+    data = JsonDumpField(read_only=True)
+    query_params = JsonDumpField(read_only=True)
 
+
+class BaseEntrySerializer(serializers.Serializer):
     class ResponseSerializer(serializers.Serializer):
         status_code = serializers.IntegerField(read_only=True)
         data = JsonDumpField(read_only=True)
@@ -31,16 +34,29 @@ class BaseEntrySerializer(serializers.Serializer):
     execution_time = serializers.DurationField(read_only=True)
     timestamp = serializers.DateTimeField(read_only=True)
     ip_address = serializers.CharField(read_only=True)
-    request = RequestSerializer(read_only=True)
+    request = BaseRequestSerializer(read_only=True)
     response = ResponseSerializer(read_only=True)
     user = UserSerializer()
 
 
-class LoggingStorage(object):
-    serializer_class = BaseEntrySerializer
+class RequestIdEntrySerializer(BaseEntrySerializer):
+    class RequestSerializer(BaseRequestSerializer):
+        request_id = serializers.CharField()
 
-    def store(self, entry):
-        logger.info(self.prepare(entry))
+    request = RequestSerializer()
+
+
+class BaseStorage(object):
+    serializer_class = None
+
+    def get_serializer_class(self):
+        return (self.serializer_class if self.serializer_class else
+                SETTINGS['SERIALIZER_CLASS'])
 
     def prepare(self, entry):
-        return self.serializer_class(entry).data
+        return self.get_serializer_class()(entry).data
+
+
+class LoggingStorage(BaseStorage):
+    def store(self, entry):
+        logger.info(self.prepare(entry))
