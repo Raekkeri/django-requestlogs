@@ -6,7 +6,7 @@ with open('README.md', 'r') as fh:
 setup(
     name='django-requestlogs',
     zip_safe=False,
-    version='0.1.5',
+    version='0.2.0',
     description='Audit logging for Django and Django Rest Framework',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -18,7 +18,7 @@ setup(
     download_url='https://github.com/raekkeri/django-requestlogs/tarball/0.1',
     packages=find_packages(exclude=['tests']),
     install_requires=[
-        'Django>=1.11,<3.0',
+        'Django>=1.11,<4.0',
         'djangorestframework>=3.0,<4.0',
         'setuptools',
     ],
