@@ -37,7 +37,7 @@ response payload, for example, is not stored.
 
 # Requirements
 
-- Django (1.11, 2.0, 2.1, 2.2)
+- Django (1.11, 2.0, 2.1, 2.2, 3.0)
 - Django REST framework
 
 Optional dependencies:

@@ -18,7 +18,7 @@ setup(
     download_url='https://github.com/raekkeri/django-requestlogs/tarball/0.1',
     packages=find_packages(exclude=['tests']),
     install_requires=[
-        'Django>=1.11,<3.0',
+        'Django>=1.11,<4.0',
         'djangorestframework>=3.0,<4.0',
         'setuptools',
     ],
