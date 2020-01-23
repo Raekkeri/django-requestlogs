@@ -2,6 +2,7 @@
 *.swp
 *.DS_Store
 .env
+.python-version
 *.map
 *.db
 tags
@@ -9,3 +10,4 @@ tags
 *.egg-info/
 dist/
 build/
+.idea
