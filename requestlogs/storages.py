@@ -2,6 +2,7 @@ import json
 import logging
 
 from rest_framework import serializers
+from rest_framework.utils.encoders import JSONEncoder
 
 from .base import SETTINGS
 
@@ -11,7 +12,7 @@ logger = logging.getLogger('requestlogs')
 
 class JsonDumpField(serializers.Field):
     def to_representation(self, value):
-        return json.dumps(value)
+        return json.dumps(value, cls=JSONEncoder)
 
 
 class BaseRequestSerializer(serializers.Serializer):
