@@ -14,7 +14,11 @@ class RequestLogsMiddleware(object):
 
     def __call__(self, request):
         response = self.get_response(request)
-        get_requestlog_entry(request).finalize(response)
+
+        # handle only methods defined in the settings
+        if request.method.upper() in tuple(m.upper() for m in SETTINGS['METHODS']):
+            get_requestlog_entry(request).finalize(response)
+
         return response
 
 
