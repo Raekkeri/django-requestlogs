@@ -107,6 +107,7 @@ REQUESTLOGS = {
     'SERIALIZER_CLASS': 'requestlogs.storages.BaseEntrySerializer',
     'SECRETS': ['password', 'token'],
     'ATTRIBUTE_NAME': '_requestlog',
+    'METHODS': ('GET', 'PUT', 'PATCH', 'POST', 'DELETE'),
 }
 ```
 
@@ -120,6 +121,8 @@ REQUESTLOGS = {
   - List of keys in request/response data which will be replaced with `'***'` in the stored entry.
 - **ATTRIBUTE_NAME**
   - django-requestlogs internally attaches the entry object to the Django request object, and uses this attribute name. Override if it causes collisions.
+- **METHODS**
+  - django-requestlogs will handle only HTTP methods defined by this setting. By default it handles all HTTP methods.
 
 
 # Logging with Request ID
