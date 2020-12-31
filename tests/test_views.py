@@ -109,10 +109,6 @@ def api_view_function(request):
     return Response({'status': 'ok'})
 
 
-def django_view(request):
-    return HttpResponse('Nothing')
-
-
 urlpatterns = [
     url(r'^/?$', View.as_view()),
     url(r'^django/?$', BasicDjangoView.as_view()),
