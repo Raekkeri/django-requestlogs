@@ -19,9 +19,7 @@ class RequestHandler(object):
 
     @property
     def data(self):
-        if self.request.method not in ['POST', 'PUT', 'PATCH']:
-            return None
-        return getattr(self.request, self.method, None)
+        return remove_secrets(self.request.POST)
 
     @property
     def query_params(self):

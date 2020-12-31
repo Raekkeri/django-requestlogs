@@ -202,7 +202,7 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
                 'request': {
                     'method': 'GET',
                     'full_path': '/django',
-                    'data': None,
+                    'data': '{}',
                     'query_params': "{}",
                 },
                 'response': {
