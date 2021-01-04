@@ -19,7 +19,7 @@ class RequestHandler(object):
 
     @property
     def data(self):
-        return None
+        return remove_secrets(self.request.POST)
 
     @property
     def query_params(self):

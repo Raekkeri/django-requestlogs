@@ -4,11 +4,13 @@ from unittest.mock import patch, Mock
 
 import django
 from django.contrib.auth import get_user_model
+from django.http import HttpResponse
 from django.test import override_settings, modify_settings
 if django.VERSION[0] < 2:
     from django.conf.urls import url
 else:
     from django.urls import re_path as url
+from django.views import View as DjangoView
 from rest_framework import serializers
 from rest_framework import viewsets
 from rest_framework.authentication import BaseAuthentication
@@ -94,6 +96,14 @@ class ServerErrorView(APIView):
         {'one': 1}['two']
 
 
+class BasicDjangoView(DjangoView):
+    def get(self, request):
+        return HttpResponse('')
+
+    def post(self, request):
+        return HttpResponse('')
+
+
 @api_view(['GET'])
 def api_view_function(request):
     return Response({'status': 'ok'})
@@ -101,6 +111,7 @@ def api_view_function(request):
 
 urlpatterns = [
     url(r'^/?$', View.as_view()),
+    url(r'^django/?$', BasicDjangoView.as_view()),
     url(r'^user/?$', ProtectedView.as_view()),
     url(r'^set-user-manually/?$', SetUserManually.as_view()),
     url(r'^login/?$', LoginView.as_view()),
@@ -178,6 +189,43 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
                 },
                 'user': {'id': None, 'username': None},
             })
+
+    def test_get_django_view(self):
+        with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+            response = self.client.get('/django')
+            self.assert_stored(mocked_store, {
+                'action_name': None,
+                'request': {
+                    'method': 'GET',
+                    'full_path': '/django',
+                    'data': '{}',
+                    'query_params': "{}",
+                },
+                'response': {
+                    'status_code': 200,
+                    'data': None
+                },
+                'user': {'id': None, 'username': None},
+            })
+
+    def test_post_django_view(self):
+        with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+            response = self.client.post('/django', data={'test': 1})
+            self.assert_stored(mocked_store, {
+                'action_name': None,
+                'request': {
+                    'method': 'POST',
+                    'full_path': '/django',
+                    'data': '{"test": "1"}',
+                    'query_params': "{}",
+                },
+                'response': {
+                    'status_code': 200,
+                    'data': None
+                },
+                'user': {'id': None, 'username': None},
+            })
+
 
     def test_api_view(self):
         with patch('tests.test_views.TestStorage.do_store') as mocked_store:
@@ -394,7 +442,7 @@ class TestServerError(RequestLogsTestMixin, APITestCase):
         with patch('tests.test_views.TestStorage.do_store') as mocked_store:
             self.assertRaises(
                 KeyError, self.client.post, '/error', {'pay': 'load'})
-            self.expected['request']['data'] = None
+            self.expected['request']['data'] = '{"pay": "load"}'
             self.assert_stored(mocked_store, self.expected)
 
 
