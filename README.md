@@ -22,6 +22,8 @@ Once installed, log storage should start showing entries such as the following:
 {'action_name': None, 'execution_time': '00:00:00.024900', 'timestamp': '2019-07-01T07:05:34.217703Z', 'ip_address': None, 'request': OrderedDict([('method', 'GET'), ('full_path', '/'), ('data', '{}'), ('query_params', '{}')]), 'response': OrderedDict([('status_code', 200), ('data', '{"ok": true}')]), 'user': OrderedDict([('id', 1), ('username', 'admin')])}
 ```
 
+*Note that to get IP address logged as well, the optional dependency `django-ipware` must be installed.*
+
 ## Motivation
 
 django-requestlogs attempts to provide tools for implementing audit logging (audit trail)
@@ -32,8 +34,8 @@ way possible while logging every request without the need of remembering to enab
 for each view separately.
 
 Currently django-requestlogs package is primarily focusing on working seamlessly with
-Django REST framework. While plain Django requests are also collected, their request and
-response payload, for example, is not stored.
+Django REST framework. While plain Django requests are also collected, storing their request
+and response payloads is not fully supported.
 
 # Requirements
 
@@ -142,7 +144,7 @@ Under the hood the request id is implemented with help of `threading.local()`.
 
 ## Installation
 
-The feature is enabled by adding `requestlogs.middleware.RequestLogsMiddleware`
+The feature is enabled by adding `requestlogs.middleware.RequestIdMiddleware`
 to the `MIDDLEWARE` setting:
 
 ```python
