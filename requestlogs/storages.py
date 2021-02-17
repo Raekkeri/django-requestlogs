@@ -1,6 +1,7 @@
 import json
 import logging
 
+from django.core.files.uploadedfile import UploadedFile
 from rest_framework import serializers
 from rest_framework.utils.encoders import JSONEncoder
 
@@ -12,6 +13,11 @@ logger = logging.getLogger('requestlogs')
 
 class JsonDumpField(serializers.Field):
     def to_representation(self, value):
+        if isinstance(value, dict):
+            for field_name, field_value in value.items():
+                if isinstance(field_value, UploadedFile):
+                    value[field_name] = (
+                        f'<{field_value.__class__.__name__}, size={field_value.size}>')
         return json.dumps(value, cls=JSONEncoder)
 
 
