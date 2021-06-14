@@ -27,6 +27,7 @@ def run_tests():
                 'django.contrib.sessions',
             ),
             MIDDLEWARE=[],
+            SECRET_KEY='1234',
         )
 
     return pytest.main()
