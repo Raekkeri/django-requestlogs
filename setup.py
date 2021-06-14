@@ -16,7 +16,7 @@ dev_requirements = (
 setup(
     name='django-requestlogs',
     zip_safe=False,
-    version='0.2.3',
+    version='0.2.4',
     description='Audit logging for Django and Django Rest Framework',
     long_description=long_description,
     long_description_content_type='text/markdown',
