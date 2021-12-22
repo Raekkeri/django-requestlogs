@@ -22,7 +22,7 @@ from rest_framework.views import APIView
 
 from requestlogs import get_requestlog_entry
 from requestlogs.logging import RequestIdContext
-from requestlogs.storages import BaseEntrySerializer, BaseStorage
+from requestlogs.storages import BaseEntrySerializer, BaseRequestSerializer, BaseStorage
 
 
 class View(APIView):
@@ -132,6 +132,12 @@ class TestStorage(BaseStorage):
         pass
 
 
+class RequestHeaderEntry(BaseEntrySerializer):
+    class RequestSerializer(BaseRequestSerializer):
+        accept_header = serializers.CharField(source='request.META.HTTP_ACCEPT')
+
+    request = RequestSerializer()
+
 
 class RequestLogsTestMixin(object):
     def assert_stored(self, mocked_store, expected_data):
@@ -237,6 +243,32 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
                     'full_path': '/func?test=1',
                     'data': "{}",
                     'query_params': '{"test": "1"}',
+                },
+                'response': {
+                    'status_code': 200,
+                    'data': '{"status": "ok"}',
+                },
+                'user': {'id': None, 'username': None},
+            })
+
+    @override_settings(
+        REQUESTLOGS={
+            'STORAGE_CLASS': 'tests.test_views.TestStorage',
+            'SERIALIZER_CLASS': 'tests.test_views.RequestHeaderEntry',
+            'SECRETS': ['passwd']
+        },
+    )
+    def test_store_http_header(self):
+        with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+            response = self.client.get('/func?test=1', HTTP_ACCEPT='application/json')
+            self.assert_stored(mocked_store, {
+                'action_name': None,
+                'request': {
+                    'method': 'GET',
+                    'full_path': '/func?test=1',
+                    'data': "{}",
+                    'query_params': '{"test": "1"}',
+                    'accept_header': 'application/json',
                 },
                 'response': {
                     'status_code': 200,
