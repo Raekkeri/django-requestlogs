@@ -26,6 +26,7 @@ class BaseRequestSerializer(serializers.Serializer):
     full_path = serializers.CharField(read_only=True)
     data = JsonDumpField(read_only=True)
     query_params = JsonDumpField(read_only=True)
+    request_headers = JsonDumpField(read_only=True)
 
 
 class BaseEntrySerializer(serializers.Serializer):
