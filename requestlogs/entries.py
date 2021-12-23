@@ -32,6 +32,15 @@ class RequestHandler(object):
     @property
     def request_id(self):
         return get_request_id()
+    
+    @property
+    def request_headers(self):
+        headers = {
+            k: v if k not in SETTINGS['SECRETS'] else "*****"
+            for k, v in self.request.META.items()
+            if k.startswith("HTTP_")
+        }
+        return headers
 
 
 class DRFRequestHandler(RequestHandler):
