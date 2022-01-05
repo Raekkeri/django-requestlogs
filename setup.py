@@ -4,7 +4,7 @@ with open('README.md', 'r') as fh:
     long_description = fh.read()
 
 requirements = (
-    'Django>=1.11,<4.0',
+    'Django>=1.11,<5.0',
     'djangorestframework>=3.0,<4.0',
     'setuptools',
 )
