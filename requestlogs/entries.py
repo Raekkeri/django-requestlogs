@@ -111,7 +111,8 @@ class RequestLogEntry(object):
     @property
     def user(self):
         ret = {
-            'id': None
+            'id': None,
+            'username': None,
         }
 
         user = self._user or getattr(self.django_request, 'user', None)
