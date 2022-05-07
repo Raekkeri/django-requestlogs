@@ -111,14 +111,16 @@ class RequestLogEntry(object):
     @property
     def user(self):
         ret = {
-            'id': None,
-            'username': None,
+            'id': None
         }
 
         user = self._user or getattr(self.django_request, 'user', None)
         if user and user.is_authenticated:
             ret['id'] = user.pk
-            ret['username'] = user.username
+            if user.__class__.USERNAME_FIELD:
+                ret[user.__class__.USERNAME_FIELD] = getattr(user, user.__class__.USERNAME_FIELD, None)
+            else:
+                ret['username'] = user.username
 
         return ret
 
