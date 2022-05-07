@@ -170,6 +170,7 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
                     'full_path': '/?q=a',
                     'data': '{}',
                     'query_params': '{"q": "a"}',
+                    'request_headers': '{"HTTP_COOKIE": ""}',
                 },
                 'response': {
                     'status_code': 200,
@@ -188,6 +189,7 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
                     'full_path': '/',
                     'data': '{"test": "1"}',
                     'query_params': "{}",
+                    'request_headers': '{"HTTP_COOKIE": ""}',
                 },
                 'response': {
                     'status_code': 200,
@@ -206,6 +208,7 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
                     'full_path': '/django',
                     'data': '{}',
                     'query_params': "{}",
+                    'request_headers': '{"HTTP_COOKIE": ""}',
                 },
                 'response': {
                     'status_code': 200,
@@ -224,6 +227,7 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
                     'full_path': '/django',
                     'data': '{"test": "1"}',
                     'query_params': "{}",
+                    'request_headers': '{"HTTP_COOKIE": ""}',
                 },
                 'response': {
                     'status_code': 200,
@@ -243,6 +247,7 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
                     'full_path': '/func?test=1',
                     'data': "{}",
                     'query_params': '{"test": "1"}',
+                    'request_headers': '{"HTTP_COOKIE": ""}',
                 },
                 'response': {
                     'status_code': 200,
@@ -269,6 +274,8 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
                     'data': "{}",
                     'query_params': '{"test": "1"}',
                     'accept_header': 'application/json',
+                    'request_headers': (
+                        '{"HTTP_COOKIE": "", "HTTP_ACCEPT": "application/json"}'),
                 },
                 'response': {
                     'status_code': 200,
@@ -451,6 +458,7 @@ class TestServerError(RequestLogsTestMixin, APITestCase):
                 'method': 'POST',
                 'full_path': '/error',
                 'query_params': '{}',
+                'request_headers': '{"HTTP_COOKIE": "", "HTTP_AUTHORIZATION": "*****"}',
             },
             'response': {
                 'status_code': 500,
@@ -579,6 +587,7 @@ class TestRequestIdMiddleware(LoggingMixin, RequestLogsTestMixin, APITestCase):
                     'data': '{}',
                     'query_params': '{"q": "1"}',
                     'request_id': '12345dcba',
+                    'request_headers': '{"HTTP_COOKIE": ""}',
                 },
                 'response': {
                     'status_code': 200,
