@@ -35,7 +35,7 @@ class View(APIView):
         return Response(self.get_response_data())
 
     def post(self, request):
-        return Response({'status': 'ok'})
+        return Response({'status': 'ok', 'unicode_test': 'öú 汉'})
 
     def get_response_data(self):
         return {}
@@ -193,7 +193,7 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
                 },
                 'response': {
                     'status_code': 200,
-                    'data': '{"status": "ok"}',
+                    'data': '{"status": "ok", "unicode_test": "öú 汉"}',
                 },
                 'user': {'id': None, 'username': None},
             })
