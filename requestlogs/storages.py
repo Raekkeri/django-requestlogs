@@ -18,7 +18,7 @@ class JsonDumpField(serializers.Field):
                 if isinstance(field_value, UploadedFile):
                     value[field_name] = (
                         f'<{field_value.__class__.__name__}, size={field_value.size}>')
-        return json.dumps(value, cls=JSONEncoder, ensure_ascii=False)
+        return json.dumps(value, cls=JSONEncoder, ensure_ascii=SETTINGS['JSON_ENSURE_ASCII'])
 
 
 class BaseRequestSerializer(serializers.Serializer):
