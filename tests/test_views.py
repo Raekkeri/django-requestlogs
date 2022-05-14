@@ -193,6 +193,28 @@ class TestStoredData(RequestLogsTestMixin, APITestCase):
                 },
                 'response': {
                     'status_code': 200,
+                    'data': '{"status": "ok", "unicode_test": "\\u00f6\\u00fa \\u6c49"}',
+                },
+                'user': {'id': None, 'username': None},
+            })
+
+    @override_settings(
+        REQUESTLOGS={'STORAGE_CLASS': 'tests.test_views.TestStorage', 'JSON_ENSURE_ASCII': False},
+    )
+    def test_post_bare_view_ensure_ascii_false(self):
+        with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+            response = self.client.post('/', data={'test': 1})
+            self.assert_stored(mocked_store, {
+                'action_name': 'post-other-stuff',
+                'request': {
+                    'method': 'POST',
+                    'full_path': '/',
+                    'data': '{"test": "1"}',
+                    'query_params': "{}",
+                    'request_headers': '{"HTTP_COOKIE": ""}',
+                },
+                'response': {
+                    'status_code': 200,
                     'data': '{"status": "ok", "unicode_test": "öú 汉"}',
                 },
                 'user': {'id': None, 'username': None},

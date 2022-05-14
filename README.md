@@ -110,6 +110,7 @@ REQUESTLOGS = {
     'SECRETS': ['password', 'token'],
     'ATTRIBUTE_NAME': '_requestlog',
     'METHODS': ('GET', 'PUT', 'PATCH', 'POST', 'DELETE'),
+    'JSON_ENSURE_ASCII': True,
 }
 ```
 
@@ -125,6 +126,8 @@ REQUESTLOGS = {
   - django-requestlogs internally attaches the entry object to the Django request object, and uses this attribute name. Override if it causes collisions.
 - **METHODS**
   - django-requestlogs will handle only HTTP methods defined by this setting. By default it handles all HTTP methods.
+- **JSON_ENSURE_ASCII**
+  - whether to dump the json data (of request and response) with `ensure_ascii=True/False`. Default is `True`. Use `False` to change it so that characters are displayed as-is.
 
 
 # Logging with Request ID

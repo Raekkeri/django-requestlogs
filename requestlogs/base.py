@@ -11,7 +11,8 @@ DEFAULT_SETTINGS = {
     'SECRETS': ['password', 'password1', 'password2', 'token', 'HTTP_AUTHORIZATION'],
     'REQUEST_ID_ATTRIBUTE_NAME': 'request_id',
     'REQUEST_ID_HTTP_HEADER': None,
-    'METHODS': ('GET', 'PUT', 'PATCH', 'POST', 'DELETE')
+    'METHODS': ('GET', 'PUT', 'PATCH', 'POST', 'DELETE'),
+    'JSON_ENSURE_ASCII': True,
 }
 
 
