@@ -102,11 +102,19 @@ class RequestLogEntry(object):
             self.request = self.django_request_handler(self.django_request)
 
         self.response = self.response_handler(response)
+
+        if self.skip_entry():
+            return
+
         self.store()
 
     def store(self):
         storage = SETTINGS['STORAGE_CLASS']()
         storage.store(self)
+
+    def skip_entry(self):
+        if SETTINGS['IGNORE_USER_FIELD']:
+            return self.user.get(SETTINGS['IGNORE_USER_FIELD'], None) in SETTINGS['IGNORE_USERS']
 
     @property
     def user(self):
