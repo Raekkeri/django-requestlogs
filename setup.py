@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 with open('README.md', 'r') as fh:
     long_description = fh.read()
 
-VERSION = '0.5.0'
+VERSION = '0.6.0'
 
 requirements = (
     'Django>=1.11,<5.0',
