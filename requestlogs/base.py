@@ -13,6 +13,8 @@ DEFAULT_SETTINGS = {
     'REQUEST_ID_HTTP_HEADER': None,
     'METHODS': ('GET', 'PUT', 'PATCH', 'POST', 'DELETE'),
     'JSON_ENSURE_ASCII': True,
+    'IGNORE_USER_FIELD': None,
+    'IGNORE_USERS': [],
 }
 
 

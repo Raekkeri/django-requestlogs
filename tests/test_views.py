@@ -65,8 +65,9 @@ class ViewSet(viewsets.ViewSet):
 
 class SimpleAuth(BaseAuthentication):
     def authenticate(self, request):
-        if request.META.get('HTTP_AUTHORIZATION') == 'Password 123':
-            return get_user_model().objects.get(), ('simple',)
+        auth = request.META.get('HTTP_AUTHORIZATION')
+        if auth:
+            return get_user_model().objects.get(password=auth), ('simple',)
 
 
 class SetUserManually(APIView):
@@ -412,8 +413,8 @@ class UserStorage(TestStorage):
 })
 class TestAuthenticationAndPermissions(APITestCase):
     def test_authenticated_user(self):
-        user = get_user_model().objects.create_user('u1')
-        self.client.credentials(HTTP_AUTHORIZATION='Password 123')
+        user = get_user_model().objects.create(username='u1', password='pw1')
+        self.client.credentials(HTTP_AUTHORIZATION='pw1')
 
         with patch('tests.test_views.UserStorage.do_store') as mocked_store:
             response = self.client.get('/user/')
@@ -464,6 +465,38 @@ class TestSetUser(APITestCase):
 
 @override_settings(
     ROOT_URLCONF=__name__,
+    REQUESTLOGS={
+        'STORAGE_CLASS': 'tests.test_views.UserStorage',
+        'IGNORE_USER_FIELD': 'username',
+        'IGNORE_USERS': ['u1'],
+    },
+)
+@modify_settings(MIDDLEWARE={
+    'append': 'requestlogs.middleware.RequestLogsMiddleware',
+})
+class TestIgnoreUser(APITestCase):
+    def test_ignore_entry_of_user(self):
+        user1 = get_user_model().objects.create(username='u1', password='pw1')
+        user2 = get_user_model().objects.create(username='other', password='pw2')
+
+        with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+            self.client.credentials(HTTP_AUTHORIZATION='pw1')
+            response = self.client.get('/user/')
+            assert response.status_code == 200
+
+        assert mocked_store.call_args_list == []
+
+        with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+            self.client.credentials(HTTP_AUTHORIZATION='pw2')
+            response = self.client.get('/user/')
+            assert response.status_code == 200
+
+        call, = mocked_store.call_args_list
+        assert call[0][0]['user']['id'] == user2.pk
+
+
+@override_settings(
+    ROOT_URLCONF=__name__,
     REQUESTLOGS={'STORAGE_CLASS': 'tests.test_views.TestStorage'},
 )
 @modify_settings(MIDDLEWARE={
@@ -472,8 +505,8 @@ class TestSetUser(APITestCase):
 class TestServerError(RequestLogsTestMixin, APITestCase):
     def setUp(self):
         super().setUp()
-        self.user = get_user_model().objects.create_user('u1')
-        self.client.credentials(HTTP_AUTHORIZATION='Password 123')
+        self.user = get_user_model().objects.create(username='u1', password='pw1')
+        self.client.credentials(HTTP_AUTHORIZATION='pw1')
         self.expected = {
             'action_name': None,
             'request': {
