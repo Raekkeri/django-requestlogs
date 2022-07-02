@@ -111,6 +111,8 @@ REQUESTLOGS = {
     'ATTRIBUTE_NAME': '_requestlog',
     'METHODS': ('GET', 'PUT', 'PATCH', 'POST', 'DELETE'),
     'JSON_ENSURE_ASCII': True,
+    'IGNORE_USER_FIELD': None,
+    'IGNORE_USERS': [],
 }
 ```
 
@@ -128,6 +130,10 @@ REQUESTLOGS = {
   - django-requestlogs will handle only HTTP methods defined by this setting. By default it handles all HTTP methods.
 - **JSON_ENSURE_ASCII**
   - whether to dump the json data (of request and response) with `ensure_ascii=True/False`. Default is `True`. Use `False` to change it so that characters are displayed as-is.
+- **IGNORE_USER_FIELD**
+  - ignore requests (that is, "do not store requestlogs") from users by the given user object field . E.g. `'email'`. Used in combination with `IGNORE_USERS`.
+- **IGNORE_USERS**
+  - ignore requests from these users. E.g. if `IGNORE_USER_FIELD` is set to `'email'`, `IGNORE_USERS` can be list of emails: `['email@email1.com', 'email@email2.com']`.
 
 
 # Logging with Request ID
