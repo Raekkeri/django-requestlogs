@@ -26,6 +26,10 @@ class RequestHandler(object):
         return remove_secrets(self.request.GET)
 
     @property
+    def path(self):
+        return self.request.path
+
+    @property
     def full_path(self):
         return self.request.get_full_path()
 
@@ -113,8 +117,8 @@ class RequestLogEntry(object):
         storage.store(self)
 
     def skip_entry(self):
-        if SETTINGS['IGNORE_USER_FIELD']:
-            return self.user.get(SETTINGS['IGNORE_USER_FIELD'], None) in SETTINGS['IGNORE_USERS']
+        skip_checks = [skip_by_user, skip_by_path]
+        return any(skip_check(self) for skip_check in skip_checks)
 
     @property
     def user(self):
@@ -170,3 +174,13 @@ class RequestLogEntry(object):
     @property
     def execution_time(self):
         return datetime.timedelta(seconds=time.time() - self._initialized_at)
+
+
+def skip_by_user(entry):
+    if SETTINGS['IGNORE_USER_FIELD']:
+        return entry.user.get(SETTINGS['IGNORE_USER_FIELD'], None) in SETTINGS['IGNORE_USERS']
+
+
+def skip_by_path(entry):
+    if SETTINGS['IGNORE_PATHS']:
+        return SETTINGS['IGNORE_PATHS'](entry.request.path)
