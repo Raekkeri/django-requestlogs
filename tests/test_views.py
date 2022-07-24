@@ -495,6 +495,124 @@ class TestIgnoreUser(APITestCase):
         assert call[0][0]['user']['id'] == user2.pk
 
 
+@override_settings(ROOT_URLCONF=__name__)
+@modify_settings(MIDDLEWARE={
+    'append': 'requestlogs.middleware.RequestLogsMiddleware',
+})
+class TestIgnorePath(APITestCase):
+    @override_settings(
+        REQUESTLOGS={
+            'STORAGE_CLASS': 'tests.test_views.TestStorage',
+            'IGNORE_PATHS': ['/func'],
+        },
+    )
+    def test_ignore_exact(self):
+        self._test_with_func_path()
+
+    @override_settings(
+        REQUESTLOGS={
+            'STORAGE_CLASS': 'tests.test_views.TestStorage',
+            'IGNORE_PATHS': ['/fun*'],
+        },
+    )
+    def test_ignore_trailing_wildcard(self):
+        self._test_with_func_path()
+
+    @override_settings(
+        REQUESTLOGS={
+            'STORAGE_CLASS': 'tests.test_views.TestStorage',
+            'IGNORE_PATHS': ['*unc'],
+        },
+    )
+    def test_ignore_trailing_wildcard(self):
+        self._test_with_func_path()
+
+    def test_ignore_using_custom_function(self):
+        with override_settings(
+                    REQUESTLOGS={
+                        'STORAGE_CLASS': 'tests.test_views.TestStorage',
+                        'IGNORE_PATHS': ignore_path_func,
+                    },
+                ):
+            self._test_with_func_path()
+
+    def test_ignore_using_custom_function_import_module(self):
+        with override_settings(
+                    REQUESTLOGS={
+                        'STORAGE_CLASS': 'tests.test_views.TestStorage',
+                        'IGNORE_PATHS': 'tests.test_views.ignore_path_func',
+                    },
+                ):
+            self._test_with_func_path()
+
+    def test_ignore_using_regex(self):
+        import re
+
+        with override_settings(
+                    REQUESTLOGS={
+                        'STORAGE_CLASS': 'tests.test_views.TestStorage',
+                        'IGNORE_PATHS': [re.compile(r'/fun')],
+                    },
+                ):
+            self._test_with_func_path()
+
+    def test_ignore_regex_and_exact(self):
+        import re
+
+        with override_settings(
+                    REQUESTLOGS={
+                        'STORAGE_CLASS': 'tests.test_views.TestStorage',
+                        'IGNORE_PATHS': ['/', re.compile(r'/fun')],
+                    },
+                ):
+            with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+                response = self.client.get('/func')
+                assert response.status_code == 200
+
+            assert mocked_store.call_args_list == []
+
+            with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+                response = self.client.get('/')
+                assert response.status_code == 200
+
+            assert mocked_store.call_args_list == []
+
+    @override_settings(
+        REQUESTLOGS={
+            'STORAGE_CLASS': 'tests.test_views.TestStorage',
+            'IGNORE_PATHS': ['/func'],
+            'IGNORE_USER_FIELD': 'username',
+            'IGNORE_USERS': ['u1'],
+        },
+    )
+    def test_ignore_paths_and_user(self):
+        self._test_with_func_path()
+
+    def test_weird_value_in_settings(self):
+        try:
+            with override_settings(
+                        REQUESTLOGS={
+                            'IGNORE_PATHS': set([1]),
+                        },
+                    ):
+                raise AssertionError('Should fail')
+        except NotImplementedError as e:
+            assert str(e) == 'Such `IGNORE_PATHS` not supported'
+
+    def _test_with_func_path(self):
+        with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+            response = self.client.get('/func')
+            assert response.status_code == 200
+
+        assert mocked_store.call_args_list == []
+
+        with patch('tests.test_views.TestStorage.do_store') as mocked_store:
+            response = self.client.get('/')
+            assert response.status_code == 200
+
+        assert mocked_store.call_count == 1
+
+
 @override_settings(
     ROOT_URLCONF=__name__,
     REQUESTLOGS={'STORAGE_CLASS': 'tests.test_views.TestStorage'},
@@ -699,3 +817,7 @@ class TestReuseRequestId(LoggingMixin, APITestCase):
             mocked_uuid.side_effect = [Mock(hex='12345dcba')]
             response = self.client.get('/')
             assert mocked_store.call_args[0][0] == {'request_id': '12345dcba'}
+
+
+def ignore_path_func(path):
+    return 'fun' in path

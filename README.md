@@ -113,6 +113,7 @@ REQUESTLOGS = {
     'JSON_ENSURE_ASCII': True,
     'IGNORE_USER_FIELD': None,
     'IGNORE_USERS': [],
+    'IGNORE_PATHS': None,
 }
 ```
 
@@ -134,6 +135,13 @@ REQUESTLOGS = {
   - ignore requests (that is, "do not store requestlogs") from users by the given user object field . E.g. `'email'`. Used in combination with `IGNORE_USERS`.
 - **IGNORE_USERS**
   - ignore requests from these users. E.g. if `IGNORE_USER_FIELD` is set to `'email'`, `IGNORE_USERS` can be list of emails: `['email@email1.com', 'email@email2.com']`.
+- **IGNORE_PATHS**
+  - ignore requests to these paths. Can be one of the following:
+    - Function or callable, which takes one parameter (the request path) and returns `true` or `false` whether the path should be ignored.
+    - Path to a function or callable (e.g. `'my_utils.ignore_paths_func'`)
+    - List of paths to ignore. In addition to exact path matches, this supports simple wildcards (leading and trailing), and `re.Pattern` objects (typically created using `re.compile(r'^/foo')`). Example:
+
+          ['/foo/', '/admin/*', '*/bar', re.compile(r'/baz/?')]
 
 
 # Logging with Request ID
