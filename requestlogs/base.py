@@ -19,6 +19,30 @@ DEFAULT_SETTINGS = {
 }
 
 
+class IgnorePaths(object):
+    def __init__(self, paths):
+        try:
+            from re import Pattern
+        except ImportError:
+            # Python 3.6 `Pattern`:
+            from typing.re import Pattern
+
+        re_paths = set(p for p in paths if isinstance(p, Pattern))
+        paths = set(paths) - re_paths
+
+        leading_wildcards = set(p for p in paths if p.startswith('*'))
+        trailing_wildcards = set(p for p in paths if p.endswith('*'))
+        exacts = paths - leading_wildcards - trailing_wildcards
+
+        self.li = [s.__eq__ for s in exacts]
+        self.li.extend([lambda p: p.endswith(s[1:]) for s in leading_wildcards])
+        self.li.extend([lambda p: p.startswith(s[:-1]) for s in trailing_wildcards])
+        self.li.extend([s.match for s in re_paths])
+
+    def __call__(self, path):
+        return any(f(path) for f in self.li)
+
+
 def populate_settings(_settings):
     for k, v in DEFAULT_SETTINGS.items():
         _settings[k] = v
@@ -67,29 +91,3 @@ def reload_settings(*args, **kwargs):
 
 
 setting_changed.connect(reload_settings)
-
-
-### Utils:
-
-class IgnorePaths(object):
-    def __init__(self, paths):
-        try:
-            from re import Pattern
-        except ImportError:
-            # Python 3.6 `Pattern`:
-            from typing.re import Pattern
-
-        re_paths = set(p for p in paths if isinstance(p, Pattern))
-        paths = set(paths) - re_paths
-
-        leading_wildcards = set(p for p in paths if p.startswith('*'))
-        trailing_wildcards = set(p for p in paths if p.endswith('*'))
-        exacts = paths - leading_wildcards - trailing_wildcards
-
-        self.li = [s.__eq__ for s in exacts]
-        self.li.extend([lambda p: p.endswith(s[1:]) for s in leading_wildcards])
-        self.li.extend([lambda p: p.startswith(s[:-1]) for s in trailing_wildcards])
-        self.li.extend([s.match for s in re_paths])
-
-    def __call__(self, path):
-        return any(f(path) for f in self.li)
