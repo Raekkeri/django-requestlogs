@@ -6,7 +6,7 @@ with open('README.md', 'r') as fh:
 VERSION = '0.7.1'
 
 requirements = (
-    'Django>=1.11,<5.0',
+    'Django>=1.11,<6.0',
     'djangorestframework>=3.0,<4.0',
     'setuptools',
 )
@@ -54,5 +54,6 @@ setup(
         'Framework :: Django :: 4.0',
         'Framework :: Django :: 4.1',
         'Framework :: Django :: 4.2',
+        'Framework :: Django :: 5.0',
     ],
 )
