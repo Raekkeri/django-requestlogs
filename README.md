@@ -53,6 +53,10 @@ Install using `pip`:
 
     pip install django-requestlogs
 
+To install with optional `django-ipware` dependency:
+
+    pip install django-requestlogs[ipware]
+
 Add `'requestlogs.middleware.RequestLogsMiddleware'` to `MIDDLEWARE` settings.
 
 ```python
