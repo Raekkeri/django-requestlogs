@@ -30,7 +30,8 @@ setup(
     packages=find_packages(exclude=['tests']),
     install_requires=requirements,
     extras_require={
-        'dev': dev_requirements
+        'dev': dev_requirements,
+        'ipware': ['django-ipware']
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
